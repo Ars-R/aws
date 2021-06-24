@@ -6,8 +6,7 @@ terraform {
     }
   }
 
-  #required_version = ">= 0.14.9"
-}
+ 
 
 # Configure the AWS Provider
 provider "aws" {
@@ -16,19 +15,6 @@ provider "aws" {
   profile                 = "default"
 }
 
-# Create a VPC
-#resource "aws_vpc" "example" {
-#  cidr_block = "10.0.0.0/16"
-#}
 
-
-# Create a VPC
-resource "aws_vpc" "default" {
-  cidr_block = "172.16.0.0/16"
-
-  #  tags = {
-  #    Name = "tf-example"
-  #  }
-}
 
 
