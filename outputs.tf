@@ -21,4 +21,20 @@ output "DNS" {
 output "machines" {
   value = aws_instance.instance.*.arn
 }
+/*
+output "public_key_openssh" {
+  value = aws_key_pair.generated_key.public_key
+}
+*/
 
+output "gw" {
+  value = var.rt_cidr_block
+}
+
+output "ff1" {
+  value = aws_internet_gateway.gw.id 
+}
+
+ # value =var.vpc_cidr_block
+ # value =var.sbn_cidr_block
+  

@@ -9,16 +9,30 @@ resource "aws_vpc" "vpc" {
     Name  = var.owner
   }
 }
+
+# Create a availability_zones
+data "aws_availability_zones" "az" {
+  
+  all_availability_zones = true
+
+  filter {
+    name   = "opt-in-status"
+    values = ["not-opted-in", "opted-in"]
+  }
+}
 # Create a subnet
 resource "aws_subnet" "subnet" {
   vpc_id     = aws_vpc.vpc.id
   cidr_block = var.sbn_cidr_block
-  
+  map_public_ip_on_launch = true
+
   tags = {
     Owner = var.owner
     Name  = var.owner
   }
 }
+
+
 
 # Create security_group
 resource "aws_security_group" "sg" {
@@ -59,6 +73,18 @@ resource "aws_security_group" "sg" {
   }
 }
 
+
+# Create a network_interface
+resource "aws_network_interface" "network_interface" {
+  security_groups = [aws_security_group.sg.id]
+  subnet_id   = aws_subnet.subnet.id
+  private_ips = ["172.16.10.100"]
+
+  tags = {
+    Name = "primary_network_interface"
+  }
+}
+
 # Create target_group
 
 resource "aws_lb_target_group_attachment" "tg" {
@@ -81,7 +107,7 @@ resource "aws_lb_target_group" "tg" {
 
 
 # Create (and display) an SSH key
-variable "key_name" {}
+#variable "key_name" {}
 
 resource "tls_private_key" "example" {
   algorithm = "RSA"
@@ -93,23 +119,41 @@ resource "aws_key_pair" "generated_key" {
   public_key = tls_private_key.example.public_key_openssh
 }
 
+
+
 # Create instance
 resource "aws_instance" "instance" {
   count = var.count_instance
-  ami   = lookup(var.ami, var.aws_region)
+  ami   = lookup(var.ami, var.aws_region, var.owner)
   instance_type               = var.instance_type
   associate_public_ip_address = true
   vpc_security_group_ids      = [aws_security_group.sg.id]
   subnet_id                   = aws_subnet.subnet.id
+  
   key_name      = aws_key_pair.generated_key.key_name
   
   user_data = var.apache0
   
-
-  
   credit_specification {
     cpu_credits = "standard"
   }
+  
+  /*provisioner "remote-exec" {
+    inline = ["sudo dnf -y install mc"]
+
+    connection {
+      
+      type        = "ssh"
+      user        = "ubuntu"
+      private_key = "${file(var.ssh_key_private)}"
+      host = element(aws_instance.instance.*.public_ip, count.index)
+    }
+  }
+
+  provisioner "local-exec" {
+    command = "ansible-playbook -u fedora -i '${self.public_ip},' --private-key ${var.ssh_key_private} provision.yml"
+  }
+*/
 
   tags = {
     Name  = element(var.instance_tags, count.index)
@@ -141,17 +185,23 @@ resource "aws_route_table" "rt" {
   }
 
 }
+# Create route_table_association
+resource "aws_main_route_table_association" "table_association" {
+  vpc_id = aws_vpc.vpc.id
+  route_table_id = aws_route_table.rt.id
+}
 
 # Create loadbalancer
 resource "aws_lb" "lb" {
   name               = "lb-tf"
+  enable_cross_zone_load_balancing = true
   internal           = false
   load_balancer_type = "network"
   subnet_mapping {
-    subnet_id = aws_subnet.subnet.*.id
+    subnet_id = aws_subnet.subnet.id
   }
 
-  enable_deletion_protection = true
+  enable_deletion_protection = false
 
   tags = {
     Environment = "aws_lb"
@@ -160,14 +210,15 @@ resource "aws_lb" "lb" {
 
 
 # Create listener
-
-# in progress
-resource "aws_lb_listener" "listener" {
-  load_balancer_arn = aws_lb.lb.id
-
+resource "aws_lb_listener" "lb" {
+  
+  load_balancer_arn = aws_lb.lb.arn
+  port              = "80"
+  protocol          = "TCP"
+  
   default_action {
-    target_group_arn = aws_lb_target_group.example.id
     type             = "forward"
+    target_group_arn = aws_lb_target_group.tg.arn
   }
 }
 

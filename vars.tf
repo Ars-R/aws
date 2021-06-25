@@ -8,15 +8,6 @@ variable "ami" {
 }
 
 
-
-
-variable "security_groups" {
-  default = ["sg-ddcd0eae"]
-}
-
-
-
-
 # Script
 variable "apache0" {
   default = <<-EOF
@@ -41,10 +32,10 @@ variable "apache0" {
     
     sudo systemctl enable apache2
     sudo systemctl start apache2
-    apt-get install mc -y
+    
     EOF
 }
-
+#apt-get install mc -y
 # Variables for VPC
 variable "vpc_cidr_block" {
   description = "CIDR block VPC"
@@ -96,16 +87,16 @@ variable "aws_region_az" {
   default = "us-east-2a"
 }
 
- variable "instance_tags" {
-   description = "instance tags"
-  type    = list(any)
-  default = ["vm-1", "vm-2"]
+variable "instance_tags" {
+  description = "instance tags"
+  type        = list(any)
+  default     = ["vm-1", "vm-2"]
 }
 
 variable "instance_type" {
   description = "Type of the instance"
   type        = string
-  default     = "t2.medium"
+  default     = "t2.micro"
 }
 
 
@@ -162,6 +153,7 @@ variable "sg_egress_cidr_block" {
   default     = "0.0.0.0/0"
 }
 
+
 # Variables for Route Table
 variable "rt_cidr_block" {
   description = "CIDR block route"
@@ -170,3 +162,14 @@ variable "rt_cidr_block" {
 }
 
 # Variables for Key
+variable "key_name" {
+  description = "key"
+  type        = string
+  default     = "new"
+}
+
+variable "ssh_key_private" {
+  description = "key_private"
+  default = "~/.ssh/id_rsa"
+
+}

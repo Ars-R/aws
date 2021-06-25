@@ -1,3 +1,4 @@
+
 terraform {
   required_providers {
     aws = {
@@ -5,8 +6,7 @@ terraform {
       version = "~> 3.0"
     }
   }
-
- 
+}
 
 # Configure the AWS Provider
 provider "aws" {
@@ -14,7 +14,5 @@ provider "aws" {
   shared_credentials_file = "~/.aws/credentials"
   profile                 = "default"
 }
-
-
 
 
