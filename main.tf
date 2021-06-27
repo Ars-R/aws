@@ -43,7 +43,7 @@ resource "aws_security_group" "sg" {
   ingress = [{
     description      = "All traffic"
     protocol         = var.sg_ingress_proto
-    from_port        = var.sg_ingress_http
+    from_port        = var.sg_ingress_ssh
     to_port          = var.sg_ingress_http
     cidr_blocks      = [var.sg_ingress_cidr_block]
     ipv6_cidr_blocks = []
@@ -114,11 +114,97 @@ resource "tls_private_key" "example" {
   rsa_bits  = 4096
 }
 
+
+resource "local_file" "private_key" {
+    content  = tls_private_key.example.private_key_pem
+    file_permission = "0600"
+    directory_permission = "0777"
+    filename = "${var.path}/${var.key_name}.pem"
+}
+
 resource "aws_key_pair" "generated_key" {
   key_name   = var.key_name
   public_key = tls_private_key.example.public_key_openssh
+  
+}
+/*
+resource "aws_transfer_ssh_key" "example" {
+  server_id = aws_transfer_server.example.id
+  user_name = aws_transfer_user.example.user_name
+  body      = "ssh-rsa AAAAB3NzaC1yc2EAAAADAQABAAABgQC+LCRu9CmYskxFBK00p2yhlY32wGW+d6ZDYTXds0AAbmQ/GducmlBB6CzKIrkGUMGlH1yVhxY5cbMFhKdgfN85q23Kg9TBneTgBqVRtqC7bnGUbXtgnSQnVYu9QGSrhOeoXdjwIWiAc1FdcFUv6vf4q0ruDZvV4gcMA2fUzAEK6+x7QX65WMDThaKV1577f4OJMlaLaQkUg1Q69lY5YRXnbgSIMfSQKRgM+/Mg6iw4+6MgAbJyfCtj3KMYwUN5gegnC14m/rq0AcL+14dpGLAd/Qar6fk/6pxzqMsldCNgEs32AWf023lnoF8EivrkhaY4h8qEh/hW0ClOk5WwXPW6LIKRb3UXzZrF0iyWLdtLriUzBrvVeK0khuyzN2oo+vd2C/8SpIW/LgghRKTPtelF/oXmTqwzBrnrU6MeE7pOZwTCAq2F2dte4RZ0lbextjJ1kuo+3WdpLE19Fl4w6wKgoPanfHzW/8DyArpA6fTzbaD4Zi/8mHg3sRtnYDS/dns= ars@ars-K52F"
+
 }
 
+resource "aws_transfer_server" "example" {
+  identity_provider_type = "SERVICE_MANAGED"
+
+  tags = {
+    NAME = "tf-acc-test-transfer-server"
+  }
+}
+
+resource "aws_transfer_user" "example" {
+  server_id = aws_transfer_server.example.id
+  user_name = "tftestuser"
+  role      = aws_iam_role.example.arn
+
+  tags = {
+    NAME = "tftestuser"
+  }
+}
+
+resource "aws_iam_role" "example" {
+  name = "tf-test-transfer-user-iam-role"
+
+  assume_role_policy = <<EOF
+{
+    "Version": "2012-10-17",
+    "Statement": [
+        {
+        "Effect": "Allow",
+        "Principal": {
+            "Service": "transfer.amazonaws.com"
+        },
+        "Action": "sts:AssumeRole"
+        }
+    ]
+}
+EOF
+}
+
+resource "aws_iam_role_policy" "example" {
+  name = "tf-test-transfer-user-iam-policy"
+  role = aws_iam_role.example.id
+
+  policy = <<POLICY
+{
+    "Version": "2012-10-17",
+    "Statement": [
+        {
+            "Sid": "AllowFullAccesstoS3",
+            "Effect": "Allow",
+            "Action": [
+                "s3:*"
+            ],
+            "Resource": "*"
+        }
+    ]
+}
+POLICY
+}
+*/
+
+/*
+resource "tls_private_key" "authorized_keys" {
+    authorized_ke = [chomp(tls_private_key.ssh.public_key_openssh)]
+
+}
+*/
+
+/*data "tls_public_key" "example" {
+  private_key_pem = file("${var.key_name}")
+  }
+*/
 
 
 # Create instance
@@ -132,29 +218,13 @@ resource "aws_instance" "instance" {
   
   key_name      = aws_key_pair.generated_key.key_name
   
-  user_data = var.apache0
+  user_data = var.apache
   
   credit_specification {
     cpu_credits = "standard"
   }
   
-  /*provisioner "remote-exec" {
-    inline = ["sudo dnf -y install mc"]
-
-    connection {
-      
-      type        = "ssh"
-      user        = "ubuntu"
-      private_key = "${file(var.ssh_key_private)}"
-      host = element(aws_instance.instance.*.public_ip, count.index)
-    }
-  }
-
-  provisioner "local-exec" {
-    command = "ansible-playbook -u fedora -i '${self.public_ip},' --private-key ${var.ssh_key_private} provision.yml"
-  }
-*/
-
+  
   tags = {
     Name  = element(var.instance_tags, count.index)
     Batch = "5AM"
@@ -222,7 +292,19 @@ resource "aws_lb_listener" "lb" {
   }
 }
 
-
+#Config inventory Ansible
+resource "local_file" "hosts" {
+  content = templatefile("hosts.tpl",
+    {
+      dns = aws_instance.instance.*.public_dns,
+      path = var.path,
+      pem = var.key_name,
+      web1 = aws_instance.instance[0].public_dns,
+      web2 = aws_instance.instance[1].public_dns
+    }
+  )
+  filename = "/etc/ansible/hosts"
+}
 
 
 /*
@@ -241,7 +323,7 @@ resource "aws_elb" "bar" {
     instance_protocol = "http"
     lb_port           = 80
     lb_protocol       = "http"
-  }
+  }ssh -i "new.pem" ubuntu@ec2-3-129-204-17.us-east-2.compute.amazonaws.com
 
   # listener {
   #   instance_port      = 8000

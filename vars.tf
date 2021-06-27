@@ -8,8 +8,8 @@ variable "ami" {
 }
 
 
-# Script
-variable "apache0" {
+# Script_site
+variable "apache" {
   default = <<-EOF
     #!/bin/bash
     sudo su
@@ -32,10 +32,18 @@ variable "apache0" {
     
     sudo systemctl enable apache2
     sudo systemctl start apache2
-    
     EOF
 }
 #apt-get install mc -y
+
+variable "ssh" {
+  default = <<-EOF
+    #!/bin/bash
+   
+    EOF
+}
+
+
 # Variables for VPC
 variable "vpc_cidr_block" {
   description = "CIDR block VPC"
@@ -109,7 +117,7 @@ variable "count_instance" {
 variable "sg_ingress_proto" {
   description = "Protocol ingress"
   type        = string
-  default     = "-1"
+  default     = "TCP"
 }
 
 variable "sg_ingress_ssh" {
@@ -120,13 +128,13 @@ variable "sg_ingress_ssh" {
 variable "sg_ingress_http" {
   description = "Port ingress"
   type        = string
-  default     = "0"
+  default     = "80"
 }
 
 variable "sg_ingress_all" {
   description = "Port ingress"
   type        = string
-  default     = "0"
+  default     = "-1"
 }
 
 variable "sg_ingress_cidr_block" {
@@ -168,8 +176,14 @@ variable "key_name" {
   default     = "new"
 }
 
-variable "ssh_key_private" {
-  description = "key_private"
-  default = "~/.ssh/id_rsa"
+#!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+variable "path" {
+  description = "key_path_ssh"
+  default = "/home/ars/Desktop/for_aws/~/.ssh/"
 
+}
+
+variable "ssh_keyname" {
+  description = ""
+  default = "~/.ssh/new"
 }
