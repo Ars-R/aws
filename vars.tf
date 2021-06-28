@@ -179,11 +179,11 @@ variable "key_name" {
 #!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 variable "path" {
   description = "key_path_ssh"
-  default = "/home/ars/Desktop/for_aws/~/.ssh/"
+  default     = "/home/ars/Desktop/for_aws/~/.ssh/"
 
 }
 
 variable "ssh_keyname" {
   description = ""
-  default = "~/.ssh/new"
+  default     = "~/.ssh/new"
 }

@@ -17,22 +17,11 @@ output "instance_private_ip" {
 output "DNS" {
   value = aws_instance.instance.*.public_dns
 }
-
+/*
 output "machines" {
   value = aws_instance.instance.*.arn
 }
-
-output "public_key_openssh" {
-  value = aws_key_pair.generated_key.public_key
-}
-/*
-output "pub_key" {
-  value = data.tls_public_key.example.public_key_openssh
-}
 */
-output "gw" {
-  value = var.rt_cidr_block
-}
 
 
-  
+

@@ -12,7 +12,7 @@ resource "aws_vpc" "vpc" {
 
 # Create a availability_zones
 data "aws_availability_zones" "az" {
-  
+
   all_availability_zones = true
 
   filter {
@@ -22,8 +22,8 @@ data "aws_availability_zones" "az" {
 }
 # Create a subnet
 resource "aws_subnet" "subnet" {
-  vpc_id     = aws_vpc.vpc.id
-  cidr_block = var.sbn_cidr_block
+  vpc_id                  = aws_vpc.vpc.id
+  cidr_block              = var.sbn_cidr_block
   map_public_ip_on_launch = true
 
   tags = {
@@ -77,8 +77,8 @@ resource "aws_security_group" "sg" {
 # Create a network_interface
 resource "aws_network_interface" "network_interface" {
   security_groups = [aws_security_group.sg.id]
-  subnet_id   = aws_subnet.subnet.id
-  private_ips = ["172.16.10.100"]
+  subnet_id       = aws_subnet.subnet.id
+  private_ips     = ["172.16.10.100"]
 
   tags = {
     Name = "primary_network_interface"
@@ -107,7 +107,6 @@ resource "aws_lb_target_group" "tg" {
 
 
 # Create (and display) an SSH key
-#variable "key_name" {}
 
 resource "tls_private_key" "example" {
   algorithm = "RSA"
@@ -116,38 +115,35 @@ resource "tls_private_key" "example" {
 
 
 resource "local_file" "private_key" {
-    content  = tls_private_key.example.private_key_pem
-    file_permission = "0600"
-    directory_permission = "0777"
-    filename = "${var.path}/${var.key_name}.pem"
+  content              = tls_private_key.example.private_key_pem
+  file_permission      = "0600"
+  directory_permission = "0777"
+  filename             = "${var.path}/${var.key_name}.pem"
 }
 
 resource "aws_key_pair" "generated_key" {
   key_name   = var.key_name
   public_key = tls_private_key.example.public_key_openssh
-  
-}
 
+}
 
 
 # Create instance
 resource "aws_instance" "instance" {
-  count = var.count_instance
-  ami   = lookup(var.ami, var.aws_region, var.owner)
+  count                       = var.count_instance
+  ami                         = lookup(var.ami, var.aws_region, var.owner)
   instance_type               = var.instance_type
   associate_public_ip_address = true
   vpc_security_group_ids      = [aws_security_group.sg.id]
   subnet_id                   = aws_subnet.subnet.id
-  
-  key_name      = aws_key_pair.generated_key.key_name
-  
-  user_data = var.apache
-  
+
+  key_name = aws_key_pair.generated_key.key_name
+
+  #user_data = var.apache
+
   credit_specification {
     cpu_credits = "standard"
   }
-  
-  
   tags = {
     Name  = element(var.instance_tags, count.index)
     Batch = "5AM"
@@ -180,16 +176,16 @@ resource "aws_route_table" "rt" {
 }
 # Create route_table_association
 resource "aws_main_route_table_association" "table_association" {
-  vpc_id = aws_vpc.vpc.id
+  vpc_id         = aws_vpc.vpc.id
   route_table_id = aws_route_table.rt.id
 }
 
 # Create loadbalancer
 resource "aws_lb" "lb" {
-  name               = "lb-tf"
+  name                             = "lb-tf"
   enable_cross_zone_load_balancing = true
-  internal           = false
-  load_balancer_type = "network"
+  internal                         = false
+  load_balancer_type               = "network"
   subnet_mapping {
     subnet_id = aws_subnet.subnet.id
   }
@@ -204,11 +200,11 @@ resource "aws_lb" "lb" {
 
 # Create listener
 resource "aws_lb_listener" "lb" {
-  
+
   load_balancer_arn = aws_lb.lb.arn
   port              = "80"
   protocol          = "TCP"
-  
+
   default_action {
     type             = "forward"
     target_group_arn = aws_lb_target_group.tg.arn
@@ -219,9 +215,9 @@ resource "aws_lb_listener" "lb" {
 resource "local_file" "hosts" {
   content = templatefile("hosts.tpl",
     {
-      dns = aws_instance.instance.*.public_dns,
+      dns  = aws_instance.instance.*.public_dns,
       path = var.path,
-      pem = var.key_name,
+      pem  = var.key_name,
       web1 = aws_instance.instance[0].public_dns,
       web2 = aws_instance.instance[1].public_dns
     }
@@ -229,6 +225,24 @@ resource "local_file" "hosts" {
   filename = "/etc/ansible/hosts"
 }
 
+resource "null_resource" "sp" {
+
+  triggers = {
+    host0          = aws_instance.instance[0].public_ip
+    instance_state = "running"
+    host1          = aws_instance.instance[1].public_ip
+    instance_state = "running"
+    arn            = aws_lb.lb.arn
+  }
+  provisioner "local-exec" {
+    command = "chmod +x script.sh"
+  }
+
+  provisioner "local-exec" {
+    command = "./script.sh"
+  }
+
+}
 
 /*
 resource "aws_elb" "bar" {
